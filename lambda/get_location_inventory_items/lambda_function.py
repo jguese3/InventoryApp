@@ -1,52 +1,40 @@
-import json
 import boto3
-from boto3.dynamodb.conditions import Key
-from botocore.exceptions import ClientError
-from decimal import Decimal
-
-# Initialize the DynamoDB client
-dynamodb = boto3.resource('dynamodb')
-
-# Define the DynamoDB table name and GSI name
-TABLE_NAME = 'Inventory'
-GSI_NAME = 'GSI_LOCATION_ID'
-
-# Function to convert Decimal to int/float for JSON serialization
-def convert_decimals(obj):
-    if isinstance(obj, list):
-        return [convert_decimals(i) for i in obj]
-    elif isinstance(obj, dict):
-        return {k: convert_decimals(v) for k, v in obj.items()}
-    elif isinstance(obj, Decimal):
-        return int(obj) if obj % 1 == 0 else float(obj)
-    return obj
+import json
 
 def lambda_handler(event, context):
-    table = dynamodb.Table(TABLE_NAME)
+    # Initialize DynamoDB client
+    dynamo_client = boto3.client('dynamodb')
+    table_name = 'Inventory'
 
-    location = event.get('pathParameters', {}).get('location_id')
-
-    try:
-        # Query GSI to get all items where location_id = location
-        response = table.query(
-            IndexName=GSI_NAME,
-            KeyConditionExpression=Key('location_id').eq(location)
-        )
-        items = response.get('Items', [])
-
-        # Convert DynamoDB Decimals to JSON-friendly types
-        items = convert_decimals(items)
-
-    except ClientError as e:
-        print(f"Failed to query items: {e.response['Error']['Message']}")
+    # Extract the '_id' from the path parameters
+    if 'pathParameters' not in event or 'id' not in event['pathParameters']:
         return {
-            'statusCode': 500,
-            'body': json.dumps('Failed to query items')
+            'statusCode': 400,
+            'body': json.dumps("Missing 'id' path parameter")
         }
 
-    return {
-        'statusCode': 200,
-        'body': json.dumps(items)
+    key_value = event['pathParameters']['id']
+    location_id_value = event['pathParameters']['location_id']
+
+    # Prepare the key for DynamoDB
+    key = {
+        'id': {'S': key_value},
+        'location_id': {'S': location_id_value}
     }
 
-# WORKFLOW TEST
+    # Attempt to delete the item from the table
+    try:
+        dynamo_client.delete_item(TableName=table_name, Key=key)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(f"Item with ID {key_value} deleted successfully.")
+        }
+    except Exception as e:
+        print(e)
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f"Error deleting item: {str(e)}")
+        }
+
+
+# TEST IF THIS WORKS AGAIN
