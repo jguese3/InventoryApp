@@ -24,10 +24,10 @@ def convert_decimals(obj):
 def lambda_handler(event, context):
     table = dynamodb.Table(TABLE_NAME)
 
-    location = event.get('pathParameters', {}).get('location')
+    location = event.get('pathParameters', {}).get('location_id')
 
     try:
-        # Query GSI to get all items where location_id = 'Polo Park'
+        # Query GSI to get all items where location_id = location
         response = table.query(
             IndexName=GSI_NAME,
             KeyConditionExpression=Key('location_id').eq(location)
@@ -48,3 +48,5 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'body': json.dumps(items)
     }
+
+# Just want to see if this deploys to AWS
