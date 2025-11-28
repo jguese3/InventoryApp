@@ -49,4 +49,4 @@ def lambda_handler(event, context):
         'body': json.dumps(items)
     }
 
-# Just want to see if this deploys to AWS
+# WORKFLOW TEST
